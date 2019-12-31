@@ -1,7 +1,7 @@
 import {Component, OnInit} from '@angular/core';
-import pc from './playcanvas';
 
 declare const glTF: any;
+declare const pc;
 
 @Component({
   selector: 'app-root',
@@ -20,10 +20,6 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     const canvas = document.getElementById('application-canvas');
 
-    if (canvas === null) {
-      return;
-    }
-
     const app = new pc.Application(canvas, {
       mouse: new pc.Mouse(canvas),
     });
@@ -33,12 +29,7 @@ export class AppComponent implements OnInit {
     app.start();
 
 
-    // cube
-    const cube = new pc.Entity();
-    cube.addComponent('model', {
-      type: 'box'
-    });
-    cube.setPosition(1, 1, 0);
+
 
     // camera
     const camera = new pc.Entity();
@@ -46,11 +37,7 @@ export class AppComponent implements OnInit {
       clearColor: new pc.Color(0.1, 0.2, 0.3)
     });
     camera.setPosition(0, 0, 3);
-
-    // light
-    const light = new pc.Entity();
-    light.addComponent('light');
-    light.setEulerAngles(45, 0, 0);
+    app.root.addChild(camera);
 
     // glTF monkey
     app.assets.loadFromUrl('assets/monkey.gltf', 'json', (err, asset) => {
@@ -72,8 +59,44 @@ export class AppComponent implements OnInit {
       app.root.addChild(entity);
     });
 
-    app.root.addChild(cube);
-    app.root.addChild(camera);
-    app.root.addChild(light);
+
+    // Cube map
+    var hdr = {
+      name: 'white-dom',
+      ddsPath: 'assets/Helipad/Helipad.dds',
+      textures: [
+        'assets/Helipad/Helipad_negx.png',
+        'assets/Helipad/Helipad_posx.png',
+        'assets/Helipad/Helipad_negy.png',
+        'assets/Helipad/Helipad_posy.png',
+        'assets/Helipad/Helipad_negz.png',
+        'assets/Helipad/Helipad_posx.png',
+      ]
+    };
+
+    var textureAssets = [];
+    for (var i = 0; i < hdr.textures.length; i++) {
+      var asset = new pc.Asset(hdr.name + '-' + i, 'texture', {url: hdr.textures[i]});
+      app.assets.add(asset);
+      textureAssets.push(asset.id);
+    }
+
+    var cmap = new pc.Asset
+    (
+      hdr.name,
+      'cubemap',
+      {url: hdr.ddsPath},
+      {
+        anisotropy: Number(1),
+        // magFilter: Number(5),
+        // minFilter: Number(1), // 엣지에서는 WEBGL11163: texParameteri: Texture filter not recognized. 이 에러나서 일단 주석처리했음
+        rgbm: true,
+        textures: textureAssets
+      }
+    );
+
+    app.scene.skyboxIntensity = Number(1);
+    app.scene.gammaCorrection = pc.GAMMA_SRGB;
+    app.setSkybox(cmap);
   }
 }
